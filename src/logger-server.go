@@ -18,7 +18,7 @@ func printLogMsg(id int, s string) {
 }
 
 func handleConnection(c net.Conn, id int) {
-	
+
 	r := bufio.NewReader(c)
 	for {
 		logStr, err := r.ReadString('\n')
@@ -57,7 +57,7 @@ func main() {
 
     flag.Parse()
 
-	printLogMsg(mainId, "Listening for connections\n")	
+	printLogMsg(mainId, "Listening for connections\n")
 
 	l, err := net.Listen("tcp", *addr)
 
@@ -76,7 +76,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		printLogMsg(mainId, "Received a new connection, handling it\n")	
+		printLogMsg(mainId, "Received a new connection, handling it\n")
 		go handleConnection(conn, idx)
 		idx += 1
 	}
