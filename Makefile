@@ -15,10 +15,13 @@ PID=$(shell cat $(PID_FILE))
 all: init $(CLIENT) $(SERVER)
 
 destroy: 
-	if [ -e $(PID_FILE) ]; then  	\
-	$(KILL) $(KILL_FLAGS) $(PID);	\
-	rm $(PID_FILE);					\
+	if [ -e $(PID_FILE) ]; then  		\
+		$(KILL) $(KILL_FLAGS) $(PID);	\
+		rm $(PID_FILE);					\
 	fi
+
+clean: destroy
+	@rm -f $(SERVER) $(CLIENT)
 
 test: destroy all
 	$(SERVER) -l $(SERVER_ADDR) &
