@@ -16,7 +16,7 @@ type client struct {
     done chan int
 }
 
-func FileReader(fileName string, outChan chan string, frDone chan bool) {
+func FileReader(fileName string, clients []client, frDone chan bool) {
     fmt.Printf("Opening file %s\n", fileName)
 
     f, err := os.Open(fileName)
@@ -29,6 +29,9 @@ func FileReader(fileName string, outChan chan string, frDone chan bool) {
 
     r := bufio.NewReader(f)
 
+    totalClients := len(clients)
+    curCli := 0
+
     for {
         line, err := r.ReadString('\n')
 
@@ -38,11 +41,15 @@ func FileReader(fileName string, outChan chan string, frDone chan bool) {
             log.Fatal(err)
         }
 
-        outChan <-line
+        clients[curCli].ch <-line
+        curCli = (curCli + 1) % totalClients
     }
 
     fmt.Printf("Finished reading file\n")
-    frDone<-true
+
+    for i := 0; i < len(clients); i++ {
+        frDone<-true
+    }
 }
 
 // TODO: can go routines return values?
@@ -74,7 +81,7 @@ func LogReporterClient(c client, addr string, frDone chan bool) {
         }
 
     }
-    fmt.Printf("Notifying main\n")
+    fmt.Printf("[%d] Notifying main\n", c.id)
     c.done <- 1
 }
 
@@ -82,20 +89,28 @@ func main() {
     var inFileName string
     var addr string
 
-    chan1 := make(chan string)
-    done1 := make(chan int)
-    frDone := make(chan bool)
-
-    cli := client{ 0, chan1 , done1}
-
 	flag.StringVar(&addr, "t", "127.0.0.1:50000", "<ip>:<port>")
     flag.StringVar(&inFileName, "f", "data/infile.txt", "input file")
 
     flag.Parse()
 
-    go FileReader(inFileName, chan1, frDone)
+    clients := make([]client, 0)
+    frDone := make(chan bool)
 
-    go LogReporterClient(cli, addr, frDone)
+    chan1 := make(chan string)
+    done1 := make(chan int)
+    clients = append(clients, client{ 0, chan1 , done1})
 
-    <-cli.done
+    chan2 := make(chan string)
+    done2 := make(chan int)
+    clients = append(clients, client{ 0, chan2 , done2})
+
+    go LogReporterClient(clients[0], addr, frDone)
+    go LogReporterClient(clients[1], addr, frDone)
+
+    go FileReader(inFileName, clients, frDone)
+
+    for _, c := range clients {
+        <-c.done
+    }
 }
