@@ -50,14 +50,59 @@ func makePidFile() int {
     return 0
 }
 
+func handleCommandConnection(conn net.Conn) {
+
+    r := bufio.NewReader(conn)
+
+    for {
+        cmdStr, err := r.ReadString('\n')
+
+        if err != nil {
+            return
+        }
+
+        switch {
+        case cmdStr == "exit\n":
+            return
+        case cmdStr == "history\n":
+            conn.Write([]byte("Displaying history\n"))
+        }
+    }
+}
+
+func AcceptCommandConnections(addr string) {
+    l, err := net.Listen("tcp", addr)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer l.Close()
+
+    for {
+        conn, err := l.Accept()
+
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        go handleCommandConnection(conn)
+    }
+}
+
 func main() {
 	var mainId = 0
 	var idx = 1
 	var addr = flag.String("l", ":50000", "<ip>:<port>")
+    var cmdAddr string
+
+    flag.StringVar(&cmdAddr, "c", ":50001", "<ip>:<port>")
 
     flag.Parse()
 
 	printLogMsg(mainId, "Listening for connections\n")
+
+    go AcceptCommandConnections(cmdAddr)
 
 	l, err := net.Listen("tcp", *addr)
 
