@@ -30,7 +30,7 @@ func handleConnection(c net.Conn, id int) {
 func main() {
 	var mainId = 0
 	var idx = 1
-	var addr = flag.String("-l", ":50000", "<ip>:<port>")
+	var addr = flag.String("l", ":50000", "<ip>:<port>")
 
     flag.Parse()
 
