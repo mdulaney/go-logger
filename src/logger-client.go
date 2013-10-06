@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 )
 
 func CommanderClient(addr string) {
@@ -38,13 +39,15 @@ func CommanderClient(addr string) {
         }
 
         // TODO: enhance to deal with timeouts
-        result, err := networkIn.ReadString('\n')
+        result, err := networkIn.ReadString('\r')
 
         if err != nil {
             log.Fatal(err)
         }
 
-        fmt.Printf("Received: %s", result)
+        result = strings.TrimSuffix(result, "\r")
+
+        fmt.Printf(result)
     }
 }
 

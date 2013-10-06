@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 )
 
 type client struct {
@@ -21,6 +22,7 @@ type config struct {
     numOfClients int `json:"numofclients"`
     server string `json:"server"`
     inFile string `json:"inputfile"`
+    delay int
 }
 
 func FileReader(fileName string, clients []client, frDone chan bool) {
@@ -60,7 +62,7 @@ func FileReader(fileName string, clients []client, frDone chan bool) {
 }
 
 // TODO: can go routines return values?
-func LogReporterClient(c client, addr string, frDone chan bool) {
+func LogReporterClient(c client, addr string, delay time.Duration, frDone chan bool) {
 	fmt.Printf("Connecting to %s\n", addr)
 
 	conn, err := net.Dial("tcp", addr)
@@ -74,6 +76,8 @@ func LogReporterClient(c client, addr string, frDone chan bool) {
     isDone := false
 
     for ; !isDone; {
+        time.Sleep(delay * time.Second)
+
         select {
         case data := <-c.ch:
 	        bytesWritten, err := conn.Write([]byte(data))
@@ -94,11 +98,12 @@ func LogReporterClient(c client, addr string, frDone chan bool) {
 
 func main() {
 
-    cfg := config { } 
+    cfg := config { }
 
 	flag.StringVar(&cfg.server, "t", "127.0.0.1:50000", "<ip>:<port>")
     flag.StringVar(&cfg.inFile, "f", "data/infile.txt", "input file")
     flag.IntVar(&cfg.numOfClients, "n", 3, "number of clients")
+    flag.IntVar(&cfg.delay, "d", 1, "delay between log events")
 
     flag.Parse()
 
@@ -107,7 +112,7 @@ func main() {
 
     for i := 0; i < cfg.numOfClients; i++ {
         clients = append(clients, client{i, make(chan string), make(chan int)})
-        go LogReporterClient(clients[i], cfg.server, frDone)
+        go LogReporterClient(clients[i], cfg.server, time.Duration(cfg.delay), frDone)
     }
 
     go FileReader(cfg.inFile, clients, frDone)

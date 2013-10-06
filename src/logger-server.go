@@ -7,11 +7,19 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 )
 
 const (
     PID_FILENAME = "logger-server.pid"
 )
+
+type clientInfo struct {
+    addr string
+}
+
+var gClientMapLocker sync.Mutex
+var gClientMap map[string]clientInfo = make(map[string]clientInfo)
 
 func printLogMsg(id int, s string) {
 	fmt.Printf("[%d] %s", id, s)
@@ -30,6 +38,10 @@ func handleConnection(c net.Conn, id int) {
 		printLogMsg(id, logStr)
 
 	}
+
+    gClientMapLocker.Lock()
+    delete(gClientMap, c.RemoteAddr().String())
+    gClientMapLocker.Unlock()
 }
 
 func makePidFile() int {
@@ -65,12 +77,14 @@ func handleCommandConnection(conn net.Conn) {
         case cmdStr == "exit\n":
             return
         case cmdStr == "history\n":
-            conn.Write([]byte("Displaying history\n"))
+            conn.Write([]byte("Displaying history\n\r"))
+        case cmdStr == "clients\n":
+            conn.Write([]byte(fmt.Sprintf("%d\n\r", len(gClientMap))))
         }
     }
 }
 
-func AcceptCommandConnections(addr string) {
+func acceptCommandConnections(addr string) {
     l, err := net.Listen("tcp", addr)
 
     if err != nil {
@@ -102,7 +116,7 @@ func main() {
 
 	printLogMsg(mainId, "Listening for connections\n")
 
-    go AcceptCommandConnections(cmdAddr)
+    go acceptCommandConnections(cmdAddr)
 
 	l, err := net.Listen("tcp", *addr)
 
@@ -122,6 +136,12 @@ func main() {
 		}
 
 		printLogMsg(mainId, "Received a new connection, handling it\n")
+
+        gClientMapLocker.Lock()
+        clientAddrString := conn.RemoteAddr().String()
+        gClientMap[clientAddrString] = clientInfo { clientAddrString }
+        gClientMapLocker.Unlock()
+
 		go handleConnection(conn, idx)
 		idx += 1
 	}
