@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+)
+
+const (
+    PID_FILENAME = "logger-server.pid"
 )
 
 func printLogMsg(id int, s string) {
@@ -27,6 +32,24 @@ func handleConnection(c net.Conn, id int) {
 	}
 }
 
+func makePidFile() int {
+    var pidFileName = PID_FILENAME
+
+    pid := os.Getpid()
+
+    f, err := os.Create(pidFileName)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer f.Close()
+
+    fmt.Fprintf(f, "%d\n", pid)
+
+    return 0
+}
+
 func main() {
 	var mainId = 0
 	var idx = 1
@@ -43,6 +66,8 @@ func main() {
 	}
 
 	defer l.Close()
+
+    makePidFile()
 
 	for {
 		conn, err := l.Accept()
