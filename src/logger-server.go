@@ -105,6 +105,10 @@ func makePidFile() int {
     return 0
 }
 
+func writeResponse(c net.Conn, response string) {
+    c.Write([]byte(response + "\r"))
+}
+
 func handleCommandConnection(conn net.Conn) {
 
     r := bufio.NewReader(conn)
@@ -120,9 +124,9 @@ func handleCommandConnection(conn net.Conn) {
         case cmdStr == "exit\n":
             return
         case cmdStr == "history\n":
-            conn.Write([]byte(getHistoryString() + "\r"))
+            writeResponse(conn, getHistoryString())
         case cmdStr == "clients\n":
-            conn.Write([]byte(fmt.Sprintf("%d\n\r", len(gClientMap))))
+            writeResponse(conn, fmt.Sprintf("%d\n", len(gClientMap)))
         }
     }
 }
