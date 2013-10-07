@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"container/list"
 	"flag"
 	"fmt"
 	"log"
@@ -18,14 +19,57 @@ type clientInfo struct {
     addr string
 }
 
+// Global declarations
 var gClientMapLocker sync.Mutex
 var gClientMap map[string]clientInfo = make(map[string]clientInfo)
+
+var gHistoryLock sync.Mutex
+var gLogHistory = list.New()
+var gMaxHistoryLen = 10
 
 func printLogMsg(id int, s string) {
 	fmt.Printf("[%d] %s", id, s)
 }
 
-func handleConnection(c net.Conn, id int) {
+func updateHistory(log string) {
+
+    gHistoryLock.Lock()
+    gLogHistory.PushFront(log)
+
+    if gLogHistory.Len() > gMaxHistoryLen {
+        gLogHistory.Remove(gLogHistory.Back())
+    }
+    gHistoryLock.Unlock()
+}
+
+func getHistoryString() string {
+
+    history := ""
+
+    gHistoryLock.Lock()
+    for l := gLogHistory.Front(); l != nil; l = l.Next() {
+        history = history + l.Value.(string)
+    }
+
+    gHistoryLock.Unlock()
+
+    return history
+}
+
+func logAggregator(logChan chan string) {
+    var logStr string
+
+    fmt.Printf("Started logAggregator()\n")
+    for {
+        select {
+        case logStr = <-logChan:
+            printLogMsg(0, logStr)
+            updateHistory(logStr)
+        }
+    }
+}
+
+func handleConnection(c net.Conn, id int, logChan chan string) {
 
 	r := bufio.NewReader(c)
 	for {
@@ -35,8 +79,7 @@ func handleConnection(c net.Conn, id int) {
 			break
 		}
 
-		printLogMsg(id, logStr)
-
+        logChan <- logStr
 	}
 
     gClientMapLocker.Lock()
@@ -77,7 +120,7 @@ func handleCommandConnection(conn net.Conn) {
         case cmdStr == "exit\n":
             return
         case cmdStr == "history\n":
-            conn.Write([]byte("Displaying history\n\r"))
+            conn.Write([]byte(getHistoryString() + "\r"))
         case cmdStr == "clients\n":
             conn.Write([]byte(fmt.Sprintf("%d\n\r", len(gClientMap))))
         }
@@ -116,6 +159,9 @@ func main() {
 
 	printLogMsg(mainId, "Listening for connections\n")
 
+    logChan := make(chan string)
+
+    go logAggregator(logChan)
     go acceptCommandConnections(cmdAddr)
 
 	l, err := net.Listen("tcp", *addr)
@@ -142,7 +188,7 @@ func main() {
         gClientMap[clientAddrString] = clientInfo { clientAddrString }
         gClientMapLocker.Unlock()
 
-		go handleConnection(conn, idx)
+		go handleConnection(conn, idx, logChan)
 		idx += 1
 	}
 }
