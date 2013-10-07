@@ -1,0 +1,5 @@
+hello
+another message
+yeah yeah yeah
+golang is awesome
+concurrency

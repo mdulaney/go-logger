@@ -2,10 +2,11 @@ package main
 
 import (
     "bufio"
-//    "encoding/json"
-    "io"
+	"encoding/json"
     "flag"
 	"fmt"
+    "io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -96,16 +97,48 @@ func LogReporterClient(c client, addr string, delay time.Duration, frDone chan b
     c.done <- 1
 }
 
+func parseConfigFile(fileName string, cfg config) {
+
+    f, err := os.Open(fileName)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    data, err := ioutil.ReadAll(f)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    //fmt.Printf("JSON data: %s\n", data)
+
+    err = json.Unmarshal(data, &cfg)
+
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
 func main() {
 
+    var cfgFileName string
+
     cfg := config { }
+    cfgFile := config { }
 
 	flag.StringVar(&cfg.server, "t", "127.0.0.1:50000", "<ip>:<port>")
     flag.StringVar(&cfg.inFile, "f", "data/infile.txt", "input file")
     flag.IntVar(&cfg.numOfClients, "n", 3, "number of clients")
     flag.IntVar(&cfg.delay, "d", 1, "delay between log events")
 
+    flag.StringVar(&cfgFileName, "c", "data/sample.cfg", "config file")
+
     flag.Parse()
+
+    if cfgFileName != "" {
+        parseConfigFile(cfgFileName, cfgFile)
+    }
 
     clients := make([]client, 0)
     frDone := make(chan bool)
