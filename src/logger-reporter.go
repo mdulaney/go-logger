@@ -20,9 +20,9 @@ type client struct {
 }
 
 type config struct {
-    numOfClients int `json:"numofclients"`
-    server string `json:"server"`
-    inFile string `json:"inputfile"`
+    numOfClients int
+    server string
+    inFile string
     delay int
 }
 
@@ -97,7 +97,7 @@ func LogReporterClient(c client, addr string, delay time.Duration, frDone chan b
     c.done <- 1
 }
 
-func parseConfigFile(fileName string, cfg config) {
+func parseConfigFile(fileName string, cfg *config) {
 
     f, err := os.Open(fileName)
 
@@ -113,11 +113,14 @@ func parseConfigFile(fileName string, cfg config) {
 
     //fmt.Printf("JSON data: %s\n", data)
 
-    err = json.Unmarshal(data, &cfg)
+    fmt.Printf(string(data))
+    err = json.Unmarshal(data, cfg)
 
     if err != nil {
         log.Fatal(err)
     }
+
+    fmt.Printf("CFG: %s\n", cfg.server)
 }
 
 func main() {
@@ -137,9 +140,10 @@ func main() {
     flag.Parse()
 
     if cfgFileName != "" {
-        parseConfigFile(cfgFileName, cfgFile)
+        parseConfigFile(cfgFileName, &cfgFile)
     }
 
+    fmt.Printf("cfg: %s\n", cfgFile.server)
     clients := make([]client, 0)
     frDone := make(chan bool)
 
